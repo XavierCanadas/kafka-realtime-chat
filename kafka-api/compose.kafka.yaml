@@ -1,0 +1,34 @@
+name: kafka-cluster
+
+services:
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:7.0.16
+    platform: linux/arm64
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+    networks:
+      - kafka-cluster-network
+      
+  kafka-1:
+    image: confluentinc/cp-kafka:7.0.16
+    platform: linux/arm64
+    depends_on:
+      - zookeeper-1
+    networks:
+      - kafka-cluster-network
+    ports:
+      - 19092:19092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://localhost:19092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CLUSTER_ID: ekGmiDBBTtq-VHVbx53u4w
+
+networks:
+  kafka-cluster-network:

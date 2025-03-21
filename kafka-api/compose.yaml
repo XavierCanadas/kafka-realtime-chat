@@ -1,0 +1,33 @@
+name: lsds-kafka-lab
+
+services:
+  rules:
+    build: rules
+    ports:
+      - "5001:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    environment:
+      BROKER: kafka-1:9092
+  alarm: # needs to revise
+    build: alarms
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    environment:
+      BROKER: kafka-1:9092
+    deploy:
+      mode: replicated
+      replicas: 3
+      endpoint_mode: vip
+  ingest: # needs to revise
+    build: sources
+    ports:
+      - "5003:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    environment:
+      BROKER: kafka-1:9092
+
+networks:
+  kafka-cluster_kafka-cluster-network:
+    external: true
