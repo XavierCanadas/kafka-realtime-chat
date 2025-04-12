@@ -16,4 +16,4 @@ COPY ./app /code/app
 
 # que posem aqui:
 
-CMD ["python3", "app/main.py"]
+CMD ["fastapi", "run", "app/main.py", "--port", "80"]

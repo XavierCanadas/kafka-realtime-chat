@@ -1,33 +1,43 @@
-name: lsds-kafka-lab
+name: realtime-chat
 
 services:
-  rules:
-    build: rules
+  websocket_server:
+    build: websocket_server
     ports:
       - "5001:80"
     networks:
       - kafka-cluster_kafka-cluster-network
     environment:
       BROKER: kafka-1:9092
-  alarm: # needs to revise
-    build: alarms
-    networks:
-      - kafka-cluster_kafka-cluster-network
-    environment:
-      BROKER: kafka-1:9092
-    deploy:
-      mode: replicated
-      replicas: 3
-      endpoint_mode: vip
-  ingest: # needs to revise
-    build: sources
-    ports:
-      - "5003:80"
-    networks:
-      - kafka-cluster_kafka-cluster-network
-    environment:
-      BROKER: kafka-1:9092
+    depends_on:
+      - relational_database
 
+  login_server:
+    build: login_server
+    ports:
+      - "5002:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - relational_database
+  
+  relational_database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: chatdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+
+  
 networks:
   kafka-cluster_kafka-cluster-network:
     external: true
+
+volumes:
+  postgres_data:
