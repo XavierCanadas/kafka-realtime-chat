@@ -9,6 +9,10 @@ services:
       - kafka-cluster_kafka-cluster-network
     environment:
       BROKER: kafka-1:9092
+      PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
+      ALGORITHM: "RS256"
+    volumes:
+      - ./auxiliar/keys:/code/app/keys:ro
     depends_on:
       - relational_database
 
@@ -20,6 +24,13 @@ services:
       - kafka-cluster_kafka-cluster-network
     depends_on:
       - relational_database
+    environment:
+      PRIVATE_KEY_PATH: "/code/app/keys/private_key.pem"
+      PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
+      ALGORITHM: "RS256"
+    volumes:
+      - ./auxiliar/keys:/code/app/keys
+
   
   relational_database:
     image: postgres:latest
