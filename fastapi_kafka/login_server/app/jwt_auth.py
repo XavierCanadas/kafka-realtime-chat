@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from sqlmodel import Field, SQLModel
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -31,12 +32,7 @@ if PRIVATE_KEY_PATH and os.path.exists(PRIVATE_KEY_PATH):
 class TokenData(BaseModel):
     username: str | None = None
 
-class User(BaseModel):
-    username: str
-    first_name: str | None = None
-    last_name: str | None = None
-    email: str | None = None
-    disabled: bool | None = None
+
 
 # OAuth2 scheme for the JWT token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

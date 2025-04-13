@@ -39,6 +39,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: chatdb
     volumes:
+      - ./relational_database/init:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"

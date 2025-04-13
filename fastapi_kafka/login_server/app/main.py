@@ -1,42 +1,40 @@
 import os
-from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
 from typing import Annotated
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
-import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
+from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
-from .jwt_auth import ACCESS_TOKEN_EXPIRATION, User, oauth2_scheme, create_access_token, get_username_from_token
-
-fake_users_db = {
-    "taylor.swift": {
-        "username": "taylor.swift",
-        "first_name": "Taylor",
-        "last_name": "Swift",
-        "email": "taylorswift@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}  # password: "secret"
+from .jwt_auth import ACCESS_TOKEN_EXPIRATION, oauth2_scheme, create_access_token, get_username_from_token
+from .database import SessionDep, create_db_and_tables, engine
+from .models import User
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
-class UserInDB(User):
-    hashed_password: str
-
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    #create_db_and_tables()
+    yield
+    # shutdown
 
+app = FastAPI(lifespan=lifespan)
 
-app = FastAPI()
+@app.get("/db-check")
+def check_db():
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    tables = inspector.get_table_names(schema="public")
+    return {"tables": tables}
+
 
 
 def verify_password(plain_password: str, hashed_password: str):
@@ -47,25 +45,22 @@ def get_password_hash(password: str):
     return pwd_context.hash(password)
 
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+def get_user(session: Session, username: str) -> User | None:
+    user = session.get(User, username)
+    return user
 
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+def authenticate_user(session: Session, username: str, password: str):
+    user = get_user(session, username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user.password_hash):
         return False
     return user
 
 
 
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -73,7 +68,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     )
     username = get_username_from_token(token)
 
-    user = get_user(fake_users_db, username=username)
+    user = get_user(session, username=username)
 
     if user is None:
         raise credentials_exception
@@ -88,8 +83,8 @@ async def get_current_active_user(current_user: Annotated[User, Depends(get_curr
 
 
 @app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep) -> Token:
+    user = authenticate_user(session, form_data.username, form_data.password)
 
     if not user:
         raise HTTPException(
@@ -104,6 +99,25 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> T
 
     return Token(access_token=access_token, token_type="bearer")
 
+@app.post("/users/", response_model=User)
+def create_user(username: str, first_name: str, last_name: str,
+                email: str, password: str, session: SessionDep):
+    db_user = get_user(session, username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    hashed_password = get_password_hash(password)
+    db_user = User(
+        username=username,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        password_hash=hashed_password
+    )
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
 
 @app.get("/")
 async def root():
@@ -118,3 +132,5 @@ async def read_user_me(current_user: Annotated[User, Depends(get_current_user)])
 @app.get("/items/")
 async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
     return {"token": token}
+
+
