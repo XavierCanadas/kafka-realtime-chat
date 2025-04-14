@@ -7,10 +7,15 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
+import logging
 
 from .jwt_auth import ACCESS_TOKEN_EXPIRATION, oauth2_scheme, create_access_token, get_username_from_token
 from .database import SessionDep, create_db_and_tables, engine
 from .models import User
+
+# set up the loggin in docker
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class Token(BaseModel):
@@ -96,6 +101,10 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=ACCESS_TOKEN_EXPIRATION
     )
+
+    logger.info(f"Access token created for user: {user.username}")
+
+    logger.info(f"token: {access_token}")
 
     return Token(access_token=access_token, token_type="bearer")
 

@@ -1,10 +1,150 @@
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+from typing import Annotated
+import json
+
+from fastapi import (
+    FastAPI,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    WebSocketException,
+    status
+)
+from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from confluent_kafka import Producer, Consumer, KafkaError
-import json
-import logging
 
-# set up the loggin in docker
-logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+from .jwt_auth import oauth2_scheme, get_username_from_token
+
+TOPIC = "rules"
+
+PRODUCER_CONFIG = {
+    "bootstrap.servers": "kafka-1:9092",
+    "client.id": "websocket-message-producer",
+}
+
+producer = Producer(PRODUCER_CONFIG)
+
+
+"""
+Message sent by the client
+{
+    "message_id": str,
+    "channel_id": str,
+    "timestamp": str,
+    "username": str,
+    "message": str,
+}
+"""
+class MessageRequest(BaseModel):
+    message_id: str
+    channel_id: str
+    timestamp: str
+    username: str
+    message: str
+
+    def to_json_str(self):
+        return json.dumps(self.model_dump())
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+
+    yield
+    # shutdown
+    producer.flush()
+
+
+app = FastAPI()
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}
+
+    async def connect(self, username: str, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections[username] = websocket
+
+    def disconnect(self, username):
+        del self.active_connections[username]
+
+
+
+manager = ConnectionManager()
+
+
+@app.get("/")
+async def root():
+    return {"helloworld": "Hello World!"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(
+        *,
+        websocket: WebSocket,
+        token: Annotated[str, Query()],
+):
+    # Check if the token is valid
+    try:
+        username = get_username_from_token(token)
+    except Exception as error:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
+    # Store the connection in the manager
+    await manager.connect(username, websocket)
+
+    # Listen for messages
+    try:
+        while True:
+            data_str = await websocket.receive_text()
+
+            try:
+                # Parse the data
+                data = json.loads(data_str)
+
+                # Convert the data to a MessageRequest object
+                message = MessageRequest(**data)
+
+                # Send the message to Kafka
+                producer.produce(TOPIC, key=message.channel_id, value=message.to_json_str())
+                producer.poll(1)
+
+                # Send acknowledgment to the client
+                await websocket.send_text(json.dumps({
+                    "status": "sent",
+                    "message_id": message.message_id
+                }))
+
+            except json.JSONDecodeError:
+                await websocket.send_text(json.dumps({"error": "Invalid JSON format"}))
+            except ValueError as e:
+                await websocket.send_text(json.dumps({"error": f"Invalid message format: {str(e)}"}))
+            except Exception as e:
+                await websocket.send_text(json.dumps({"error": "Failed to process message"}))
+
+    except WebSocketDisconnect:
+        manager.disconnect(username)
+    except Exception:
+        manager.disconnect(username)
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
+@app.post("/message/")
+async def send_message_to_client(message: MessageRequest):
+    """
+    This endpoint is used internally, the message server sends the message to this endpoint
+    Then the message is sent to the client via websocket
+    """
+    # Check if the user is connected
+    if message.username not in manager.active_connections:
+        return {"error": "User not connected"}
+
+    try:
+        # Send the message to the client
+        websocket = manager.active_connections[message.username]
+        await websocket.send_text(message.to_json_str())
+
+        return {"status": "sent", "message_id": message.message_id}
+    except Exception as e:
+        return {"status": "error", "reason": f"Unexpected error: {str(e)}"}

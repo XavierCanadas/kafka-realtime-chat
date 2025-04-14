@@ -1,6 +1,7 @@
 fastapi[standard]>=0.113.0,<0.114.0
 pydantic>=2.7.0,<3.0.0
 pyjwt[crypto]
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 sqlmodel
 psycopg2-binary
