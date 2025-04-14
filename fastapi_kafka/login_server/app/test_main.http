@@ -1,11 +1,62 @@
 # Test your FastAPI endpoints
 
+# Test health check
 GET http://127.0.0.1:5002/
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:5002/hello/User
+# Check database tables
+GET http://127.0.0.1:5002/db-check
 Accept: application/json
+
+###
+
+# Create a new user
+POST http://127.0.0.1:5002/users/
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&first_name=Test&last_name=User&email=test@example.com&password=securepassword
+
+###
+
+# Login and get token
+POST http://127.0.0.1:5002/token
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&password=securepassword
+
+###
+
+# Get current user with token (replace TOKEN with actual token)
+GET http://127.0.0.1:5002/users/me
+Authorization: Bearer TOKEN
+
+###
+
+# Test protected items endpoint (replace TOKEN with actual token)
+GET http://127.0.0.1:5002/items/
+Authorization: Bearer TOKEN
+
+###
+
+# Test login with invalid credentials
+POST http://127.0.0.1:5002/token
+Content-Type: application/x-www-form-urlencoded
+
+username=wronguser&password=wrongpassword
+
+###
+
+# Try accessing protected endpoint without token
+GET http://127.0.0.1:5002/users/me
+
+###
+
+# Try creating user with existing username
+POST http://127.0.0.1:5002/users/
+Content-Type: application/x-www-form-urlencoded
+
+username=testuser&first_name=Another&last_name=User&email=another@example.com&password=password123
 
 ###
