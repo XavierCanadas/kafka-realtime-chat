@@ -1,3 +1,11 @@
+/*
+ * user.sql
+ * fastapi_kafka
+ *
+ * Created by Xavier Cañadas on 15/4/2025
+ * Copyright (c) 2025. All rights reserved.
+ */
+
 -- Create the user table
 CREATE TABLE IF NOT EXISTS users
 (
@@ -22,6 +30,7 @@ VALUES ('olivia.rodrigo',
         'Swift',
         'taylor.swift@exemple.com',
         '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW' -- password: 'secret'
-       );
+       )
+ON CONFLICT (username) DO NOTHING;
 
 

@@ -1,3 +1,10 @@
+#
+#  database.py
+#  fastapi_kafka
+#
+#  Created by Xavier Cañadas on 15/4/2025
+#  Copyright (c) 2025. All rights reserved.
+
 import os
 from typing import Annotated
 from sqlmodel import create_engine, Session, SQLModel
@@ -8,7 +15,7 @@ from .models import User
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://root:password@relational_database:5432/chatdb"
+    "postgresql://root:password@relational_database:5433/chatdb"
 )
 engine = create_engine(DATABASE_URL, echo=True)
 

@@ -1,7 +1,14 @@
+#
+#  main.py
+#  fastapi_kafka
+#
+#  Created by Xavier Cañadas on 15/4/2025
+#  Copyright (c) 2025. All rights reserved.
+
 import os
 from contextlib import asynccontextmanager
 from typing import Annotated
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select, inspect
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -35,7 +42,6 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/db-check")
 def check_db():
-    from sqlalchemy import inspect
     inspector = inspect(engine)
     tables = inspector.get_table_names(schema="public")
     return {"tables": tables}

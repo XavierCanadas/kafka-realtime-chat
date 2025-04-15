@@ -1,3 +1,10 @@
+#
+#  models.py
+#  fastapi_kafka
+#
+#  Created by Xavier Cañadas on 15/4/2025
+#  Copyright (c) 2025. All rights reserved.
+
 from sqlmodel import SQLModel, Field
 
 class User(SQLModel, table=True):

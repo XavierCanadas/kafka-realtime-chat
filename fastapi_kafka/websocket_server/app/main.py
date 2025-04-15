@@ -1,7 +1,15 @@
+#
+#  main.py
+#  fastapi_kafka
+#
+#  Created by Xavier Cañadas on 15/4/2025
+#  Copyright (c) 2025. All rights reserved.
+
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from typing import Annotated
 import json
+import os
 
 from fastapi import (
     FastAPI,
@@ -19,13 +27,14 @@ from .jwt_auth import oauth2_scheme, get_username_from_token
 
 TOPIC = "rules"
 
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka-1:9092")
+
 PRODUCER_CONFIG = {
-    "bootstrap.servers": "kafka-1:9092",
+    "bootstrap.servers": KAFKA_BROKER,
     "client.id": "websocket-message-producer",
 }
 
 producer = Producer(PRODUCER_CONFIG)
-
 
 """
 Message sent by the client
@@ -37,7 +46,14 @@ Message sent by the client
     "message": str,
 }
 """
+
+
+# todo: in the future maybe would need to create a Request class, to allow different tipes of requests: message, history of a channel…
+# for now, the only requests the client will send are messages.
 class MessageRequest(BaseModel):
+    """
+    This class defines the message sent by the client.
+    """
     message_id: str
     channel_id: str
     timestamp: str
@@ -54,13 +70,18 @@ async def lifespan(app: FastAPI):
 
     yield
     # shutdown
-    producer.flush()
+    producer.flush()  # before shutdown, the producer needs to send the pending messages
 
 
 app = FastAPI()
 
+
 class ConnectionManager:
     def __init__(self):
+        """
+        active_connections: dics of the websocket connections. The username is the key and the WebSocket the value.
+        todo: in the future would change to use redis.
+        """
         self.active_connections: dict[str, WebSocket] = {}
 
     async def connect(self, username: str, websocket: WebSocket):
@@ -71,13 +92,12 @@ class ConnectionManager:
         del self.active_connections[username]
 
 
-
 manager = ConnectionManager()
 
 
 @app.get("/")
 async def root():
-    return {"helloworld": "Hello World!"}
+    return {"hello_world": "Hello World!"}
 
 
 @app.websocket("/ws")
@@ -95,7 +115,6 @@ async def websocket_endpoint(
     # Store the connection in the manager
     await manager.connect(username, websocket)
 
-    # Listen for messages
     try:
         while True:
             data_str = await websocket.receive_text()
@@ -103,8 +122,6 @@ async def websocket_endpoint(
             try:
                 # Parse the data
                 data = json.loads(data_str)
-
-                # Convert the data to a MessageRequest object
                 message = MessageRequest(**data)
 
                 # Send the message to Kafka
@@ -122,7 +139,7 @@ async def websocket_endpoint(
             except ValueError as e:
                 await websocket.send_text(json.dumps({"error": f"Invalid message format: {str(e)}"}))
             except Exception as e:
-                await websocket.send_text(json.dumps({"error": "Failed to process message"}))
+                await websocket.send_text(json.dumps({"error": f"Failed to process message, error: {str(e)}"}))
 
     except WebSocketDisconnect:
         manager.disconnect(username)
@@ -130,11 +147,12 @@ async def websocket_endpoint(
         manager.disconnect(username)
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
+
 @app.post("/message/")
 async def send_message_to_client(message: MessageRequest):
     """
     This endpoint is used internally, the message server sends the message to this endpoint
-    Then the message is sent to the client via websocket
+    Then the message is sent to the client via websocket.
     """
     # Check if the user is connected
     if message.username not in manager.active_connections:

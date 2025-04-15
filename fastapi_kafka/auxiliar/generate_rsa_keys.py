@@ -1,3 +1,10 @@
+#
+#  generate_rsa_keys.py
+#  fastapi_kafka
+#
+#  Created by Xavier Cañadas on 15/4/2025
+#  Copyright (c) 2025. All rights reserved.
+
 import os
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
@@ -37,3 +44,4 @@ def generate_rsa_keys():
 # Run this function once to generate keys
 if __name__ == "__main__":
     generate_rsa_keys()
+

@@ -1,6 +1,8 @@
 # Realtime chat with kafka
 *Created by Xavier Cañadas*
 
+
+
 ## 1. Introduction
 This project is a simplified version of a realtime chat application built using a microservice architecture, where each component focuses on a specific task. The system offers several key features and architectural benefits:
 
@@ -92,6 +94,14 @@ Apache Kafka serves as the messaging backbone of the system, enabling reliable, 
 
 - **Scalability**: The partitioned design allows multiple consumer instances to process messages in parallel while preserving order within each channel
 
+- topics:
+```c 
+docker exec -it kafka-cluster-kafka-1-1 /bin/sh
+
+/bin/kafka-topics --bootstrap-server kafka-1:9092 --create --topic messages  --partitions 20 --replication-factor 
+
+/bin/kafka-topics --bootstrap-server kafka-1:9092 --list
+```
 
 
 
