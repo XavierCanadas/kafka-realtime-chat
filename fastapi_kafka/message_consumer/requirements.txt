@@ -3,3 +3,4 @@ requests
 pydantic
 sqlmodel
 psycopg2
+redis

@@ -6,3 +6,4 @@ websockets
 sqlmodel
 pyjwt[crypto]
 passlib[bcrypt]
+redis

@@ -4,7 +4,7 @@
 #
 #  Created by Xavier Cañadas on 15/4/2025
 #  Copyright (c) 2025. All rights reserved.
-
+import redis
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -25,16 +25,19 @@ from confluent_kafka import Producer, Consumer, KafkaError
 
 from .jwt_auth import oauth2_scheme, get_username_from_token
 
+SERVER_URL = os.getenv("SERVER_URL", "websocket_server_1:80")
+
+# Kafka configuration
 TOPIC = "messages"
-
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka-1:9092")
-
 PRODUCER_CONFIG = {
     "bootstrap.servers": KAFKA_BROKER,
     "client.id": "websocket-message-producer",
 }
-
 producer = Producer(PRODUCER_CONFIG)
+
+# Redis configuration
+redis_instance = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 
 """
 Message sent by the client
@@ -46,8 +49,6 @@ Message sent by the client
     "message": str,
 }
 """
-
-
 # todo: in the future maybe would need to create a Request class, to allow different tipes of requests: message, history of a channel…
 # for now, the only requests the client will send are messages.
 
@@ -56,7 +57,6 @@ class Message(BaseModel):
     """
     This class defines the message sent by the client.
     """
-
     message_id: str
     channel_id: int
     timestamp: str
@@ -96,6 +96,7 @@ class ConnectionManager:
     async def connect(self, username: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[username] = websocket
+        #result = redis_instance.set("username", username)
 
     def disconnect(self, username):
         del self.active_connections[username]

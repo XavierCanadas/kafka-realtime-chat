@@ -16,6 +16,7 @@ import json
 import os
 import requests
 from sqlmodel.sql._expression_select_cls import _T
+import redis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
@@ -29,6 +30,10 @@ MESSAGE_CONSUMER_CONFIG = {
     "group.id": "websocket-message-producer",
     "auto.offset.reset": "latest",  # during restarts, only read messages that haven't been processed.
 }
+
+# Redis configuration
+redis_instance = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+
 
 # Database configuration
 DATABASE_URL = os.getenv(
