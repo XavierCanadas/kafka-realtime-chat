@@ -28,10 +28,34 @@ services:
       PRIVATE_KEY_PATH: "/code/app/keys/private_key.pem"
       PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
       ALGORITHM: "RS256"
-      DATABASE_URL: "postgresql://root:password@relational_database:5433/chatdb"
+      DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
     volumes:
       - ./auxiliar/keys:/code/app/keys
 
+  message_consumer:
+    build: message_consumer
+    ports:
+      - "5003:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - relational_database
+    environment:
+      DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
+
+  web_client:
+    build: web_client
+    ports:
+      - "5004:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - login_server
+      - websocket_server
+    environment:
+      LOGIN_SERVER_URL: "http://login_server"
+      WEBSOCKET_SERVER_URL: "http://websocket_server"
+      WEBSOCKET_CLIENT_URL: "ws://localhost:5001/ws"
   
   relational_database:
     image: postgres:latest
@@ -43,7 +67,7 @@ services:
       - ./relational_database/init:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5433"
+      - "5432:5432"
     networks:
       - kafka-cluster_kafka-cluster-network
 

@@ -15,7 +15,7 @@ from .models import User
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://root:password@relational_database:5433/chatdb"
+    "postgresql://root:password@relational_database:5432/chatdb"
 )
 engine = create_engine(DATABASE_URL, echo=True)
 
