@@ -1,0 +1,7 @@
+fastapi[standard]>=0.113.0,<0.114.0
+pydantic>=2.7.0,<3.0.0
+requests==2.32.3
+python-jose==3.3.0
+jinja2==3.1.4
+python-multipart==0.0.9
+websockets==12.0

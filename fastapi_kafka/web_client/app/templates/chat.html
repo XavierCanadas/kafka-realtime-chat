@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Realtime Chat{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item">
+    <span class="nav-link">Welcome, {{ username }}</span>
+</li>
+<li class="nav-item">
+    <a class="nav-link" href="/logout">Logout</a>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Chat Channel #{{ channel_id }}</h3>
+                <span id="connection-status" class="badge bg-secondary">Disconnected</span>
+            </div>
+            <div class="card-body">
+                <div id="chat-messages" class="mb-3" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
+                    <div class="text-center text-muted">
+                        <p>Connecting to chat...</p>
+                    </div>
+                </div>
+                <form id="message-form">
+                    <div class="input-group">
+                        <input type="text" id="message-input" class="form-control" placeholder="Type your message..." autocomplete="off">
+                        <button class="btn btn-primary" type="submit" id="send-button" disabled>Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Store important information passed from the server
+    const username = "{{ username }}";
+    const token = "{{ token }}";
+    const channelId = parseInt("{{ channel_id }}");
+    const websocketBaseUrl = "{{ websocket_url }}";
+    
+    // WebSocket connection
+    let socket;
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const messagesContainer = document.getElementById('chat-messages');
+    const sendButton = document.getElementById('send-button');
+    const connectionStatus = document.getElementById('connection-status');
+    
+    // Connect to WebSocket with JWT token
+    function connectWebSocket() {
+        // Construct WebSocket URL with token as query parameter
+        const websocketUrl = `${websocketBaseUrl}?token=${encodeURIComponent(token)}`;
+        
+        // Create WebSocket connection
+        socket = new WebSocket(websocketUrl);
+        
+        socket.onopen = function(e) {
+            console.log("WebSocket connection established");
+            connectionStatus.textContent = "Connected";
+            connectionStatus.className = "badge bg-success";
+            sendButton.disabled = false;
+            
+            // Show a system message
+            addMessage({
+                username: "System",
+                message: "You are now connected to the chat!",
+                timestamp: new Date().toISOString()
+            }, true);
+        };
+        
+        socket.onmessage = function(event) {
+            console.log("Message received:", event.data);
+            const data = JSON.parse(event.data);
+            
+            // Handle different message types
+            if (data.status === "sent") {
+                // This is an acknowledgment of our sent message
+                console.log("Message acknowledged by server:", data.message_id);
+            } else {
+                // This is a regular message
+                addMessage(data);
+            }
+        };
+        
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed:", event.code, event.reason);
+            connectionStatus.textContent = "Disconnected";
+            connectionStatus.className = "badge bg-danger";
+            sendButton.disabled = true;
+            
+            // Try to reconnect after a delay
+            setTimeout(connectWebSocket, 3000);
+            
+            // Show a system message
+            addMessage({
+                username: "System",
+                message: "Connection lost. Reconnecting...",
+                timestamp: new Date().toISOString()
+            }, true);
+        };
+        
+        socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+            connectionStatus.textContent = "Error";
+            connectionStatus.className = "badge bg-danger";
+        };
+    }
+    
+    // Format timestamp for display
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Add a message to the chat
+    function addMessage(data, isSystem = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = isSystem ? 'chat-message system-message' : 'chat-message';
+        
+        const time = formatTimestamp(data.timestamp);
+        
+        if (isSystem) {
+            messageDiv.innerHTML = `
+                <div class="text-center">
+                    <span class="badge bg-secondary">${time}</span>
+                    <span>${data.message}</span>
+                </div>
+            `;
+        } else {
+            // Check if this message is from the current user
+            const isSelf = data.username === username;
+            
+            messageDiv.innerHTML = `
+                <div class="message ${isSelf ? 'message-self' : 'message-other'}">
+                    <div class="message-header">
+                        <strong>${isSelf ? 'You' : data.username}</strong>
+                        <small class="text-muted">${time}</small>
+                    </div>
+                    <div class="message-body">
+                        ${data.message}
+                    </div>
+                </div>
+            `;
+        }
+        
+        messagesContainer.appendChild(messageDiv);
+        
+        // Scroll to the bottom
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Generate a random message ID
+    function generateMessageId() {
+        return 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Submit a new message
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const message = messageInput.value.trim();
+        if (message && socket && socket.readyState === WebSocket.OPEN) {
+            // Create message object
+            const messageData = {
+                message_id: generateMessageId(),
+                channel_id: channelId,
+                timestamp: new Date().toISOString(),
+                username: username,
+                message: message
+            };
+            
+            // Send message via WebSocket
+            socket.send(JSON.stringify(messageData));
+            
+            // Clear input
+            messageInput.value = '';
+            
+            // Display message immediately
+            addMessage(messageData);
+        }
+    });
+    
+    // Connect when page loads
+    document.addEventListener('DOMContentLoaded', connectWebSocket);
+</script>
+<style>
+    .chat-message {
+        margin-bottom: 15px;
+        display: flex;
+        width: 100%;
+    }
+    
+    .message {
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 70%;
+    }
+    
+    .message-self {
+        background-color: #dcf8c6;
+        margin-left: auto;
+        margin-right: 10px;
+        border-bottom-right-radius: 0;
+        text-align: right;
+    }
+    
+    .message-other {
+        background-color: #f1f0f0;
+        margin-right: auto;
+        margin-left: 10px;
+        border-bottom-left-radius: 0;
+        text-align: left;
+    }
+    
+    .system-message {
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        margin: 10px auto;
+        width: 100%;
+    }
+    
+    .message-header {
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .message-body {
+        word-wrap: break-word;
+    }
+    
+    .message-self .message-header {
+        flex-direction: row-reverse;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,41 @@
+/* Main styles for the chat application */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: none;
+}
+
+.card-header {
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Chat specific styles */
+#chat-messages {
+    background-color: white;
+    border-radius: 4px;
+}
+
+/* Message display */
+.message {
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.message-self {
+    border-top-right-radius: 0 !important;
+}
+
+.message-other {
+    border-top-left-radius: 0 !important;
+}
+
+/* Login form */
+.form-control:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    border-color: #86b7fe;
+}
