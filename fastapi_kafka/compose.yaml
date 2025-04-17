@@ -7,6 +7,9 @@ services:
       - "5001:80"
     networks:
       - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - relational_database
+      - redis
     environment:
       KAFKA_BROKER: kafka-1:9092
       PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
@@ -14,8 +17,24 @@ services:
       SERVER_URL: "websocket_server_1:80"
     volumes:
       - ./auxiliar/keys:/code/app/keys:ro
+
+  websocket_server_2:
+    build: websocket_server
+    ports:
+      - "5011:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
     depends_on:
       - relational_database
+      - redis
+    environment:
+      KAFKA_BROKER: kafka-1:9092
+      PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
+      ALGORITHM: "RS256"
+      SERVER_URL: "websocket_server_2:80"
+    volumes:
+      - ./auxiliar/keys:/code/app/keys:ro
+
 
   login_server:
     build: login_server
@@ -41,6 +60,7 @@ services:
       - kafka-cluster_kafka-cluster-network
     depends_on:
       - relational_database
+      - redis
     environment:
       DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
 
@@ -52,7 +72,8 @@ services:
       - kafka-cluster_kafka-cluster-network
     depends_on:
       - login_server
-      - websocket_server
+      - websocket_server_1
+      - websocket_server_2
     environment:
       LOGIN_SERVER_URL: "http://login_server"
       WEBSOCKET_SERVER_URL: "http://websocket_server"

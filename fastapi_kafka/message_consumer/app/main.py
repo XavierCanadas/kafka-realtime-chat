@@ -17,6 +17,7 @@ import os
 import requests
 from sqlmodel.sql._expression_select_cls import _T
 import redis
+import asyncio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
@@ -122,7 +123,7 @@ def get_channel_users(channel_id: int) -> Sequence[_T] | list[Any]:
             return []
 
 
-def get_user_websocket_server(username: str) -> str:
+def get_user_websocket_server(username: str) -> str | None:
     """
     This function gets the websocket server for the given username.
     Makes the request to the Redis database.
@@ -133,10 +134,13 @@ def get_user_websocket_server(username: str) -> str:
 
     todo: now will always return the same websocket server and without consulting Redis, in the future change it.
     """
-    return "http://websocket_server/message/"
+    websocket_server_url = redis_instance.hget("active_connections", username)
+    if websocket_server_url:
+        return websocket_server_url
 
+    return None
 
-def send_message(message: Message, username: str, url: str):
+async def send_message(message: Message, username: str, websocket_server_url: str):
     """
     This function sends the given message to the websocket server with the given url.
     The message will be sent with a post, header = application/json.
@@ -144,7 +148,7 @@ def send_message(message: Message, username: str, url: str):
 
     params:
         message (Message): The message to send.
-        url (str): The url of the websocket server.
+        websocket_server_url (str): The url of the websocket server.
     """
     message_request = MessageRequest(message=message, username=username)
 
@@ -152,6 +156,7 @@ def send_message(message: Message, username: str, url: str):
     data = message_request.model_dump()
 
     try:
+        url = f"http://{websocket_server_url}/message"
         response = requests.post(url, json=data, headers=header)
         response.raise_for_status()
 
@@ -162,7 +167,7 @@ def send_message(message: Message, username: str, url: str):
         logger.error(f"Failed to send message: {e}")
 
 
-def store_message(message: Message):
+async def store_message(message: Message):
     """
     This function stores the given message in the non relational database.
     todo: now the function doesn't do anything, in the future make it functional.
@@ -172,7 +177,7 @@ def store_message(message: Message):
     )
 
 
-def process_message(message: Message):
+async def process_message(message: Message):
     """
     This function is called when a message is received from the Kafka broker.
     Steps:
@@ -191,12 +196,13 @@ def process_message(message: Message):
         try:
             websocket_server = get_user_websocket_server(username)
             logger.info(f"Sending message to user: {username}")
-            send_message(message, username, websocket_server)
+            if websocket_server:
+                await send_message(message, username, websocket_server)
         except Exception as e:
             logger.error(f"Failed to send message to {username}: {e}")
 
     # Store the message for history
-    store_message(message)
+    await store_message(message)
 
 
 def message_consumer_loop():
@@ -221,7 +227,7 @@ def message_consumer_loop():
                 try:
                     message_info = json.loads(new_message.value())
                     logger.info(f"Message info: {message_info}")
-                    process_message(Message(**message_info))
+                    asyncio.run(process_message(Message(**message_info)))
 
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON format: {e}")

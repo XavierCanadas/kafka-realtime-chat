@@ -96,10 +96,12 @@ class ConnectionManager:
     async def connect(self, username: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[username] = websocket
-        #result = redis_instance.set("username", username)
+        redis_instance.hset("active_connections", username, SERVER_URL)
 
     def disconnect(self, username):
-        del self.active_connections[username]
+        if username in self.active_connections:
+            del self.active_connections[username]
+            redis_instance.hdel("active_connections", username)
 
 
 manager = ConnectionManager()
