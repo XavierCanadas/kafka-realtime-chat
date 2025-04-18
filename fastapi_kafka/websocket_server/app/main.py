@@ -109,7 +109,9 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def root():
-    return {"hello_world": "Hello World!"}
+    return {"hello_world": "Hello World!",
+            "websocket_url": SERVER_URL
+            }
 
 
 @app.websocket("/ws")
@@ -166,7 +168,7 @@ async def websocket_endpoint(
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
-@app.post("/message/")
+@app.post("/message")
 async def send_message_to_client(message_request: MessageRequest):
     """
     This endpoint is used internally, the message server sends the message to this endpoint
@@ -174,7 +176,8 @@ async def send_message_to_client(message_request: MessageRequest):
     """
     message = message_request.message
     username = message_request.username
-    print("AAA")
+    print(f"Sending message to {username}, message: {message.message}")
+
     # Check if the user is connected
     if username not in manager.active_connections:
         return {"error": "User not connected"}
