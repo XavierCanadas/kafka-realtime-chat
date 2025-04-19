@@ -94,9 +94,26 @@ class ConnectionManager:
         self.active_connections: dict[str, WebSocket] = {}
 
     async def connect(self, username: str, websocket: WebSocket):
+
+        active_connection = redis_instance.hget("active_connections", username)
+
+        if active_connection:
+            await websocket.accept()
+
+            await websocket.send_text(json.dumps({
+                "status": "error",
+                "reason": "Already connected",
+                "message": f"User {username} already has an active connection"
+            }))
+
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User already has an active connection")
+            return False
+
         await websocket.accept()
         self.active_connections[username] = websocket
         redis_instance.hset("active_connections", username, SERVER_URL)
+
+        return True
 
     def disconnect(self, username):
         if username in self.active_connections:
@@ -127,7 +144,10 @@ async def websocket_endpoint(
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
     # Store the connection in the manager
-    await manager.connect(username, websocket)
+    connected = await manager.connect(username, websocket)
+
+    if not connected:
+        return
 
     try:
         while True:

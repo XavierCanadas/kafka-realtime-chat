@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 # Configuration
 LOGIN_SERVER_URL = os.getenv("LOGIN_SERVER_URL", "http://login_server")
-WEBSOCKET_SERVER_URL = os.getenv("WEBSOCKET_SERVER_URL", "http://websocket_server")
+WEBSOCKET_SERVER_URL = os.getenv("WEBSOCKET_SERVER_URL", "http://websocket_server_1")
 WEBSOCKET_CLIENT_URL = os.getenv(
     "WEBSOCKET_CLIENT_URL", "ws://localhost:5001/ws"
 )  # The URL clients use to connect

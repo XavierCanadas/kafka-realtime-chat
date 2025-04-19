@@ -94,7 +94,8 @@
             connectionStatus.textContent = "Disconnected";
             connectionStatus.className = "badge bg-danger";
             sendButton.disabled = true;
-            
+
+            /*
             // Try to reconnect after a delay
             setTimeout(connectWebSocket, 3000);
             
@@ -104,6 +105,7 @@
                 message: "Connection lost. Reconnecting...",
                 timestamp: new Date().toISOString()
             }, true);
+            */
         };
         
         socket.onerror = function(error) {
