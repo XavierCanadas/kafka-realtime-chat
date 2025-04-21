@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS user_channels
 
 class UserChannels(SQLModel, table=True):
     __tablename__ = "user_channels"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "chatdb"}
 
     username: str = Field(primary_key=True)
     channel_id: int = Field(primary_key=True)

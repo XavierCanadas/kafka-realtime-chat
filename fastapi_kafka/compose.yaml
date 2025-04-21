@@ -1,6 +1,18 @@
 name: realtime-chat
 
 services:
+  nginx_load_balancer:
+    image: nginx:latest
+    ports:
+      - "5001:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - websocket_server_1
+      - websocket_server_2
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
   websocket_server_1:
     build: websocket_server
     ports:
@@ -35,19 +47,6 @@ services:
     volumes:
       - ./auxiliar/keys:/code/app/keys:ro
 
-  nginx_load_balancer:
-    image: nginx:latest
-    ports:
-      - "5001:80"
-    networks:
-      - kafka-cluster_kafka-cluster-network
-    depends_on:
-      - websocket_server_1
-      - websocket_server_2
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-
-
   login_server:
     build: login_server
     ports:
@@ -76,6 +75,17 @@ services:
     environment:
       DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
 
+  channel_manager:
+    build: channel_manager
+    ports:
+      - "5005:80"
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    depends_on:
+      - relational_database
+    environment:
+      DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
+
   web_client:
     build: web_client
     ports:
@@ -97,7 +107,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: chatdb
     volumes:
-      - ./relational_database/init:/docker-entrypoint-initdb.d
+      - .databases/relational_database/init:/docker-entrypoint-initdb.d
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
@@ -114,6 +124,18 @@ services:
     volumes:
       - redis_data:/data
 
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - kafka-cluster_kafka-cluster-network
+    volumes:
+      - .databases/mongodb/init:/docker-entrypoint-initdb.d
+      - mongodb_data:/data/db
   
 networks:
   kafka-cluster_kafka-cluster-network:
@@ -122,3 +144,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  mongodb_data:
