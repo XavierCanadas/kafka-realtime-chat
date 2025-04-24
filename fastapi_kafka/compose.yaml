@@ -85,6 +85,9 @@ services:
       - relational_database
     environment:
       DATABASE_URL: "postgresql://root:password@relational_database:5432/chatdb"
+      PUBLIC_KEY_PATH: "/code/app/keys/public_key.pem"
+    volumes:
+      - ./auxiliar/keys:/code/app/keys:ro
 
   web_client:
     build: web_client

@@ -114,7 +114,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
 
     return Token(access_token=access_token, token_type="bearer")
 
-@app.post("/users/", response_model=User)
+@app.post("/users", response_model=User)
 def create_user(username: str, first_name: str, last_name: str,
                 email: str, password: str, session: SessionDep):
     db_user = get_user(session, username)
@@ -144,7 +144,7 @@ async def read_user_me(current_user: Annotated[User, Depends(get_current_user)])
     return current_user
 
 
-@app.get("/items/")
+@app.get("/items")
 async def read_items(token: Annotated[str, Depends(oauth2_scheme)]):
     return {"token": token}
 

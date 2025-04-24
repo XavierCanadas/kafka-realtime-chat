@@ -54,13 +54,12 @@ CREATE TABLE IF NOT EXISTS user_channels
 );
 """
 
-
 class UserChannels(SQLModel, table=True):
     __tablename__ = "user_channels"
     __table_args__ = {"schema": "public"}
 
-    username: str = Field(primary_key=True)
-    channel_id: int = Field(primary_key=True)
+    username: str = Field(primary_key=True, foreign_key='users.username')
+    channel_id: int = Field(primary_key=True, foreign_key='channels.channel_id')
 
 
 class Message(BaseModel):

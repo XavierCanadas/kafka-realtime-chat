@@ -4,47 +4,22 @@
 #
 #  Created by Xavier Cañadas on 21/4/2025
 #  Copyright (c) 2025. All rights reserved.
-import datetime
-
+from fastapi.params import Depends
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from typing import Annotated
 import json
 import os
 
-from fastapi import FastAPI, Query, status
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from fastapi import FastAPI, Query, status, HTTPException
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
+from sqlmodel import inspect, select
 
 from .jwt_auth import oauth2_scheme, get_username_from_token
+from .database import SessionDep, engine, get_channels_from_user, get_channels_by_name, create_channel, join_channel
+from .models import Channel, UserChannels
 
-
-# Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://root:password@relational_database:5432/chatdb"
-)
-
-engine = create_engine(DATABASE_URL, echo=True)
-"""
-CREATE TABLE IF NOT EXISTS channels
-(
-    id           SERIAL PRIMARY KEY,
-    channel_name VARCHAR(50) UNIQUE NOT NULL,
-    description  VARCHAR(255),
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
-class Channel(SQLModel, table=True):
-    __tablename__ = "channels"
-    __table_args__ = {"schema": "chatdb"}
-
-    id: int | None = Field(default=None, primary_key=True) # default is none so the database sets the id
-    channel_name: str
-    description: str
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    updated_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
 
 @asynccontextmanager
@@ -58,4 +33,93 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"hello_world": "Hello World!"}
+
+@app.get("/db-check")
+def check_db():
+    inspector = inspect(engine)
+    tables = inspector.get_table_names(schema="public")
+    return {"tables": tables}
+
+# given a user, return all the channels
+@app.get("/channels/me")
+def get_user_channels(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
+    """
+    This endpoint returns all user's channels. When a user enters the app, calls this endpoint.
+    params:
+        token Annotated[str, Depends(oauth2_scheme)]: the jwt token given by the login server
+    """
+
+    # get username and check token
+    try:
+        username = get_username_from_token(token)
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        channels = get_channels_from_user(username, session)
+        return channels
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+
+# return channels given the name
+@app.get("/channels/{channel_name}")
+def get_channel(channel_name: str, token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
+    """
+    This endpoint returns all the channels with the given channel_name.
+    params:
+        channel_name str: the channel_name given by the user
+        token Annotated[str, Depends(oauth2_scheme)]: the jwt token given by the user
+    """
+    try:
+        channels = get_channels_by_name(channel_name, session)
+        return channels
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# create a channel
+@app.post("/channels", response_model=Channel)
+def create_channel_endpoint(channel_name: str, description: str, token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
+    """
+    This endpoint creates a channel with the given channel_name and description.
+    params:
+        channel_name str: the channel_name given by the user
+        description str: the description given by the user
+    """
+    try:
+        channel = create_channel(channel_name, description, session)
+        return channel
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error))
+
+# join a channel
+@app.post("/channels/join")
+def join_channel_endpoint(channel_id: int, token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
+    """
+    This endpoint joins a channel with the given channel_id and the username.
+    params:
+        channel_id int: the channel_id given by the user
+    """
+    try:
+        username = get_username_from_token(token)
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        user_channel = join_channel(channel_id, username, session)
+        return {"status": "success", "channel_id": user_channel}
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error))
+
+
 

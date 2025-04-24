@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BigDataIdeConnectionSettings">
+    <option name="connections">
+      <list>
+        <ExtendedConnectionData>
+          <option name="extended">
+            <map>
+              <entry key="brokerCloudSource" value="rO0ABX5yADNjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5rYWZrYS5yZnMuS2Fma2FDbG91ZFR5cGUAAAAAAAAAABIAAHhyAA5qYXZhLmxhbmcuRW51bQAAAAAAAAAAEgAAeHB0AAlDT05GTFVFTlQ=" />
+              <entry key="brokerConfigurationSource" value="rO0ABX5yAD1jb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5rYWZrYS5yZnMuS2Fma2FDb25maWd1cmF0aW9uU291cmNlAAAAAAAAAAASAAB4cgAOamF2YS5sYW5nLkVudW0AAAAAAAAAABIAAHhwdAAHRlJPTV9VSQ==" />
+              <entry key="glueSettings" value="rO0ABXQAUHsiYXV0aGVudGljYXRpb25UeXBlIjoiRGVmYXVsdCBjcmVkZW50aWFsIHByb3ZpZGVycyBjaGFpbiIsInJlZ2lvbiI6InVzLWVhc3QtMSJ9" />
+              <entry key="properties" value="rO0ABXQAAA==" />
+              <entry key="propertySource" value="rO0ABX5yADhjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5rYWZrYS5yZnMuS2Fma2FQcm9wZXJ0eVNvdXJjZQAAAAAAAAAAEgAAeHIADmphdmEubGFuZy5FbnVtAAAAAAAAAAASAAB4cHQABkRJUkVDVA==" />
+              <entry key="registryConfSource" value="rO0ABX5yAD1jb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5rYWZrYS5yZnMuS2Fma2FDb25maWd1cmF0aW9uU291cmNlAAAAAAAAAAASAAB4cgAOamF2YS5sYW5nLkVudW0AAAAAAAAAABIAAHhwdAAHRlJPTV9VSQ==" />
+              <entry key="registryProperties" value="rO0ABXQAAA==" />
+              <entry key="registryType" value="rO0ABX5yADtjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5rYWZrYS5yZWdpc3RyeS5LYWZrYVJlZ2lzdHJ5VHlwZQAAAAAAAAAAEgAAeHIADmphdmEubGFuZy5FbnVtAAAAAAAAAAASAAB4cHQABE5PTkU=" />
+              <entry key="registryUseBrokerSsl" value="rO0ABXNyABFqYXZhLmxhbmcuQm9vbGVhbs0gcoDVnPruAgABWgAFdmFsdWV4cAE=" />
+              <entry key="tunnel" value="rO0ABXNyAFdjb20uamV0YnJhaW5zLmJpZ2RhdGF0b29scy5jb21tb24uY29ubmVjdGlvbi50dW5uZWwubW9kZWwuQ29ubmVjdGlvblNzaFR1bm5lbERhdGFMZWdhY3mINKLe8MxKawIABVoACWlzRW5hYmxlZEkACnJlbW90ZVBvcnRMAAhjb25maWdJZHQAEkxqYXZhL2xhbmcvU3RyaW5nO0wACWxvY2FsUG9ydHQAE0xqYXZhL2xhbmcvSW50ZWdlcjtMAApyZW1vdGVIb3N0cQB+AAF4cAD/////dAAAcHEAfgAE" />
+              <entry key="version" value="rO0ABXNyABFqYXZhLmxhbmcuSW50ZWdlchLioKT3gYc4AgABSQAFdmFsdWV4cgAQamF2YS5sYW5nLk51bWJlcoaslR0LlOCLAgAAeHAAAAAF" />
+            </map>
+          </option>
+          <option name="fqn" value="com.jetbrains.bigdatatools.kafka.rfs.KafkaConnectionData" />
+          <option name="groupId" value="KafkaConnections" />
+          <option name="innerId" value="Kafka@KafkaConnections@2353113930137413650" />
+          <option name="name" value="Kafka" />
+          <option name="perProject" value="true" />
+          <option name="uri" value="localhost:19092" />
+        </ExtendedConnectionData>
+      </list>
+    </option>
+  </component>
+</project>

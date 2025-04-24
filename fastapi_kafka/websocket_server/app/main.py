@@ -214,6 +214,6 @@ async def send_message_to_client(message_request: MessageRequest):
     except Exception as e:
         return {"status": "error", "reason": f"Unexpected error: {str(e)}"}
 
-@app.get("/active-connections/")
+@app.get("/active-connections")
 async def get_active_connections():
     return {"active_connections": list(manager.active_connections.keys())}
