@@ -4,6 +4,9 @@
 
 {% block nav_items %}
 <li class="nav-item">
+    <a class="nav-link" href="/channels">&laquo; Back to Channels</a>
+</li>
+<li class="nav-item">
     <span class="nav-link">Welcome, {{ username }}</span>
 </li>
 <li class="nav-item">
@@ -178,8 +181,14 @@
                 message: message
             };
             
+            // Create request object
+            const request = {
+                type: 0, // message type request
+                data: JSON.stringify(messageData)
+            };
+            
             // Send message via WebSocket
-            socket.send(JSON.stringify(messageData));
+            socket.send(JSON.stringify(request));
             
             // Clear input
             messageInput.value = '';

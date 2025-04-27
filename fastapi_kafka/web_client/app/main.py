@@ -57,7 +57,7 @@ def get_current_user(session_id: Annotated[Optional[str], Cookie()] = None):
 async def root(request: Request, session_id: Annotated[Optional[str], Cookie()] = None):
     """Render the login page or redirect to chat if already logged in"""
     if session_id and session_id in active_sessions:
-        return RedirectResponse(url="/chat")
+        return RedirectResponse(url="/channels")
 
     return templates.TemplateResponse(
         "login.html", {"request": request, "error_message": ""}
@@ -106,8 +106,8 @@ async def login(username: Annotated[str, Form()], password: Annotated[str, Form(
             "token": access_token,
         }
 
-        # Redirect to chat with session cookie
-        response = RedirectResponse(url="/chat", status_code=303)
+        # Redirect to channels page with session cookie
+        response = RedirectResponse(url="/channels", status_code=303)
         response.set_cookie(key="session_id", value=session_id)
         return response
 
@@ -119,9 +119,25 @@ async def login(username: Annotated[str, Form()], password: Annotated[str, Form(
         )
 
 
-@app.get("/chat", response_class=HTMLResponse)
-async def chat(request: Request, user_data: dict = Depends(get_current_user)):
-    """Render the chat page"""
+@app.get("/channels", response_class=HTMLResponse)
+async def channels(request: Request, user_data: dict = Depends(get_current_user)):
+    """Render the channels page"""
+    return templates.TemplateResponse(
+        "channels.html",
+        {
+            "request": request,
+            "username": user_data["username"],
+            "token": user_data["token"],
+            "websocket_url": WEBSOCKET_CLIENT_URL,
+        },
+    )
+
+
+@app.get("/chat/{channel_id}", response_class=HTMLResponse)
+async def chat(
+    request: Request, channel_id: int, user_data: dict = Depends(get_current_user)
+):
+    """Render the chat page for a specific channel"""
     return templates.TemplateResponse(
         "chat.html",
         {
@@ -129,7 +145,7 @@ async def chat(request: Request, user_data: dict = Depends(get_current_user)):
             "username": user_data["username"],
             "token": user_data["token"],
             "websocket_url": WEBSOCKET_CLIENT_URL,
-            "channel_id": 1,  # Hardcoded to channel 1 for now
+            "channel_id": channel_id,
         },
     )
 
