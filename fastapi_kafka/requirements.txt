@@ -5,3 +5,4 @@ black>=24.2.0,<25.0.0
 requests==2.32.3
 cryptography
 sqlmodel
+aiohttp

@@ -4,12 +4,12 @@
 #
 #  Created by Xavier Cañadas on 15/4/2025
 #  Copyright (c) 2025. All rights reserved.
-import redis
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from typing import Annotated
 import json
 import os
+import aiohttp
 
 from fastapi import (
     FastAPI,
@@ -22,6 +22,7 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from confluent_kafka import Producer, Consumer, KafkaError
+import redis
 
 from .jwt_auth import oauth2_scheme, get_username_from_token
 
@@ -72,6 +73,24 @@ class MessageRequest(BaseModel):
     message: Message
     username: str
 
+class ChannelRequest(BaseModel):
+    """
+    This class defines a channel request.
+    It is used to handle channel-related operations like joining, creating, or getting channels information.
+    """
+    operation: int  # 0 = join, 1 = create, 2 = get_user_channels, 3 = get_by_name
+    channel_id: int = None
+    channel_name: str = None
+    description: str = None
+
+class Request(BaseModel):
+    """
+    This class defines the request sent by the client.
+    The client can request send a message or a channel request.
+    """
+    type: int # 0 = message, 1 = channel
+    data: str
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,7 +108,6 @@ class ConnectionManager:
     def __init__(self):
         """
         active_connections: dics of the websocket connections. The username is the key and the WebSocket the value.
-        todo: in the future would change to use redis.
         """
         self.active_connections: dict[str, WebSocket] = {}
 
@@ -124,6 +142,112 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def send_message_to_server(message_str: str, websocket: WebSocket):
+    try:
+        # Parse the data
+        data = json.loads(message_str)
+        message = Message(**data)
+
+        # todo: maybe send the MessageRequest in kafka instead of Message.
+        # Send the message to Kafka
+        producer.produce(
+            TOPIC, key=str(message.channel_id), value=message.model_dump_json()
+        )
+        producer.poll(1)
+
+        # Send acknowledgment to the client
+        await websocket.send_text(
+            json.dumps({"status": "sent", "message_id": message.message_id})
+        )
+
+    except json.JSONDecodeError:
+        await websocket.send_text(json.dumps({"error": "Invalid JSON format for message request"}))
+
+    except ValueError as e:
+        await websocket.send_text(
+            json.dumps({"error": f"Invalid message format: {str(e)}"})
+        )
+
+    except Exception as e:
+        await websocket.send_text(
+            json.dumps({"error": f"Failed to process message, error: {str(e)}"})
+        )
+
+# todo: separate this function in small functions or reuse code. Also might be good if this is in a separate file
+async def send_channel_request(request_str: str, username: str, websocket: WebSocket):
+    channel_server_url = "http://channel_manager:80/channels/"
+
+    try:
+        data = json.loads(request_str)
+        channel_request = ChannelRequest(**data)
+
+        async with aiohttp.ClientSession() as session:
+            if channel_request.operation == 0:
+                # Join channel
+                join_url = channel_server_url + "join"
+                data = {
+                    "channel_id": channel_request.channel_id,
+                    "username": username
+                }
+                try:
+                    async with session.post(join_url, json=data, headers={"Content-Type": "application/json"}) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        await websocket.send_text(json.dumps(result))
+                except aiohttp.ClientError as e:
+                    await websocket.send_text(json.dumps({
+                        "error": f"Failed to join channel: {str(e)}"
+                    }))
+
+            elif channel_request.operation == 1:
+                # Create channel
+                data = {
+                    "channel_name": channel_request.channel_name,
+                    "channel_description": channel_request.description if channel_request.description else ""
+                }
+                try:
+                    async with session.post(channel_server_url, json=data, headers={"Content-Type": "application/json"}) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        await websocket.send_text(json.dumps(result))
+                except aiohttp.ClientError as e:
+                    await websocket.send_text(json.dumps({
+                        "error": f"Failed to create channel: {str(e)}"
+                    }))
+
+            elif channel_request.operation == 2:
+                # Get user channels
+                get_user_channels_url = channel_server_url + "me/" + username
+                try:
+                    async with session.get(get_user_channels_url) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        await websocket.send_text(json.dumps(result))
+                except aiohttp.ClientError as e:
+                    await websocket.send_text(json.dumps({
+                        "error": f"Channel request failed: {str(e)}"
+                    }))
+
+            elif channel_request.operation == 3:
+                # Get channel by name
+                get_by_name_url = channel_server_url + channel_request.channel_name
+                try:
+                    async with session.get(get_by_name_url) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        await websocket.send_text(json.dumps(result))
+                except aiohttp.ClientError as e:
+                    await websocket.send_text(json.dumps({
+                        "error": f"Failed to get channel by name: {str(e)}"
+                    }))
+            else:
+                await websocket.send_text(json.dumps({"error": f"Unknown operation: {channel_request.operation}"}))
+
+    except json.JSONDecodeError as e:
+        await websocket.send_text(json.dumps({"error": "Invalid JSON format for channel request. " + str(e)}))
+    except Exception as e:
+        await websocket.send_text(json.dumps({"error": f"Channel request processing failed: {str(e)}"}))
+
 @app.get("/")
 async def root():
     return {"hello_world": "Hello World!",
@@ -154,32 +278,19 @@ async def websocket_endpoint(
             data_str = await websocket.receive_text()
 
             try:
-                # Parse the data
                 data = json.loads(data_str)
-                message = Message(**data)
+                request = Request(**data)
 
-                # todo: maybe send the MessageRequest in kafka instead of Message.
-                # Send the message to Kafka
-                producer.produce(
-                    TOPIC, key=str(message.channel_id), value=message.model_dump_json()
-                )
-                producer.poll(1)
+                if request.type == 0:
+                    await send_message_to_server(request.data, websocket)
 
-                # Send acknowledgment to the client
-                await websocket.send_text(
-                    json.dumps({"status": "sent", "message_id": message.message_id})
-                )
+                elif request.type == 1:
+                    await send_channel_request(request.data, username, websocket)
+
 
             except json.JSONDecodeError:
                 await websocket.send_text(json.dumps({"error": "Invalid JSON format"}))
-            except ValueError as e:
-                await websocket.send_text(
-                    json.dumps({"error": f"Invalid message format: {str(e)}"})
-                )
-            except Exception as e:
-                await websocket.send_text(
-                    json.dumps({"error": f"Failed to process message, error: {str(e)}"})
-                )
+
 
     except WebSocketDisconnect:
         manager.disconnect(username)

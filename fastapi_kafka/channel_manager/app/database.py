@@ -86,6 +86,16 @@ def join_channel(channel_id: int, username: str, session: Session) -> UserChanne
     if not channel_id or not username:
         raise Exception("channel_id and username are required")
 
+    # check if the user is already in the channel
+    try:
+        statement: Select = select(UserChannels).where((UserChannels.channel_id == channel_id) & (UserChannels.username == username))
+        result = session.exec(statement).all()
+        if result:
+            raise Exception("username already is in the channel")
+
+    except Exception as e:
+        raise Exception(e)
+
     try:
         user_channel = UserChannels(username=username, channel_id=channel_id)
         session.add(user_channel)
