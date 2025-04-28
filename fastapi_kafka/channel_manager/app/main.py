@@ -4,28 +4,12 @@
 #
 #  Created by Xavier Cañadas on 21/4/2025
 #  Copyright (c) 2025. All rights reserved.
-from fastapi.params import Depends
-from pydantic import BaseModel
-from contextlib import asynccontextmanager
-from typing import Annotated
-import json
-import os
-
 from fastapi import FastAPI, Query, status, HTTPException
-from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from sqlmodel import inspect, select
 
 from .database import SessionDep, engine, get_channels_from_user, get_channels_by_name, create_channel, join_channel
-from .models import Channel, UserChannels
-
-class CreateChannelRequest(BaseModel):
-    channel_name: str
-    channel_description: str
-
-class JoinChannelRequest(BaseModel):
-    channel_id: int
-    username: str
+from .models import Channel, UserChannels, CreateChannelRequest, JoinChannelRequest
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

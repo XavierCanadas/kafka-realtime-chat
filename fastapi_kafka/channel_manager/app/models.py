@@ -7,6 +7,7 @@
 import os
 from sqlmodel import Field, SQLModel
 from datetime import datetime
+from pydantic import BaseModel
 
 
 
@@ -38,4 +39,12 @@ class UserChannels(SQLModel, table=True):
     username: str = Field(primary_key=True, foreign_key='public.users.username')
     channel_id: int = Field(primary_key=True, foreign_key='public.channels.id')
 
+
+class CreateChannelRequest(BaseModel):
+    channel_name: str
+    channel_description: str
+
+class JoinChannelRequest(BaseModel):
+    channel_id: int
+    username: str
 

@@ -157,19 +157,28 @@
                     displayUserChannels(data);
                 }
             } 
-            // Check if this is a response to join or create
+            // Check if this is a response to join
             else if (data.status === "success") {
                 // This is a successful join response
-                window.location.href = `/chat/${data.channel_id}`;
+                // Check the structure of channel_id and handle appropriately
+                console.log("Join response:", data);
+                
+                let channelId;
+                if (typeof data.channel_id === 'object' && data.channel_id.channel_id) {
+                    channelId = data.channel_id.channel_id;
+                } else if (data.channel_id) {
+                    channelId = data.channel_id;
+                } else {
+                    console.error("Unable to determine channel ID from response:", data);
+                    alert("Error joining channel: Unable to determine channel ID");
+                    return;
+                }
+                
+                window.location.href = `/chat/${channelId}`;
             }
             // Check if this is a successful channel creation
             else if (data.id) {
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('createChannelModal'));
-                if (modal) modal.hide();
-                
-                // Join the newly created channel
-                joinChannel(data.id);
+                handleChannelCreationResponse(data);
             }
         };
         
@@ -312,24 +321,6 @@
         }
     }
     
-    // Handle channel response (create, join, search)
-    function handleChannelResponse(data) {
-        // Check if this is a response to join or create
-        if (data.status === "success") {
-            // This is a successful join response
-            window.location.href = `/chat/${data.channel_id}`;
-        }
-        // Check if this is a successful channel creation
-        else if (data.id) {
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('createChannelModal'));
-            if (modal) modal.hide();
-            
-            // Join the newly created channel
-            joinChannel(data.id);
-        }
-    }
-    
     // Create new channel
     function createChannel(channelName, description) {
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -344,7 +335,27 @@
                 data: JSON.stringify(channelRequest)
             };
             
+            console.log("Creating channel:", channelName);
+            console.log("Request:", request);
+            
             socket.send(JSON.stringify(request));
+        }
+    }
+    
+    // Process channel creation response
+    function handleChannelCreationResponse(data) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createChannelModal'));
+        if (modal) modal.hide();
+        
+        // Check if the response has the channel ID
+        if (data.id) {
+            console.log("Channel created with ID:", data.id);
+            // Join the newly created channel
+            joinChannel(parseInt(data.id));
+        } else {
+            console.error("Failed to extract channel ID from response:", data);
+            alert("Failed to create channel: Could not get channel ID");
         }
     }
     

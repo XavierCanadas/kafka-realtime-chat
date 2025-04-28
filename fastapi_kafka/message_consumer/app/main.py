@@ -15,6 +15,7 @@ import logging
 import json
 import os
 import requests
+import aiohttp
 from sqlmodel.sql._expression_select_cls import _T
 import redis
 import asyncio
@@ -153,16 +154,17 @@ async def send_message(message: Message, username: str, websocket_server_url: st
     header = {"Content-Type": "application/json"}
     data = message_request.model_dump()
 
-    try:
-        url = f"http://{websocket_server_url}/message"
-        response = requests.post(url, json=data, headers=header)
-        response.raise_for_status()
+    async with aiohttp.ClientSession() as session:
+        try:
+            url = f"http://{websocket_server_url}/message"
+            async with session.post(url, json=data, headers=header) as response:
+                response.raise_for_status()
 
-        if response.status_code != 200:
-            logger.error(response.text)
+                if response.status != 200:
+                    logger.error(response.text)
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to send message: {e}")
+        except Exception as e:
+            logger.error(f"Failed to send message: {e}")
 
 
 async def store_message(message: Message):
