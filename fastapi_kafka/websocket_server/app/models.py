@@ -6,6 +6,7 @@
 #  Copyright (c) 2025. All rights reserved.
 
 from pydantic import BaseModel
+
 class Message(BaseModel):
     """
     This class defines the message sent by the client.
@@ -30,7 +31,7 @@ class ChannelRequest(BaseModel):
     This class defines a channel request.
     It is used to handle channel-related operations like joining, creating, or getting channels information.
     """
-    operation: int  # 0 = join, 1 = create, 2 = get_user_channels, 3 = get_by_name
+    operation: int  # 0 = join, 1 = create, 2 = get_user_channels, 3 = get_by_name, 4 = channel history
     channel_id: int = None
     channel_name: str = None
     description: str = None

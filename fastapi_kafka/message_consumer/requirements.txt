@@ -5,3 +5,4 @@ sqlmodel
 psycopg2
 redis
 aiohttp
+pymongo

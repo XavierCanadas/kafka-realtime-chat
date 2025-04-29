@@ -11,7 +11,7 @@ from fastapi import WebSocket
 from .models import ChannelRequest
 
 
-# todo: separate this function in small functions or reuse code. Also might be good if this is in a separate file
+# todo: now the function has a lot of repetitive code. Handle it!
 async def send_channel_request(request_str: str, username: str, websocket: WebSocket):
     channel_server_url = "http://channel_manager:80/channels/"
 
@@ -78,6 +78,19 @@ async def send_channel_request(request_str: str, username: str, websocket: WebSo
                     await websocket.send_text(json.dumps({
                         "error": f"Failed to get channel by name: {str(e)}"
                     }))
+            elif channel_request.operation == 4:
+                # todo: get channel history
+                channel_history_url = channel_server_url + "messages/" + str(channel_request.channel_id)
+                try:
+                    async with session.get(channel_history_url) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        await websocket.send_text(json.dumps(result))
+                except aiohttp.ClientError as e:
+                    await websocket.send_text(json.dumps({
+                        "error": f"Failed to get channel history: {str(e)}"
+                    }))
+
             else:
                 await websocket.send_text(json.dumps({"error": f"Unknown operation: {channel_request.operation}"}))
 

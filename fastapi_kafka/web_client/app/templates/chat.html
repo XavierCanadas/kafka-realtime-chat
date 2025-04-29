@@ -24,7 +24,7 @@
             </div>
             <div class="card-body">
                 <div id="chat-messages" class="mb-3" style="height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
-                    <div class="text-center text-muted">
+                    <div class="text-center text-muted" id="loading-message">
                         <p>Connecting to chat...</p>
                     </div>
                 </div>
@@ -55,6 +55,10 @@
     const messagesContainer = document.getElementById('chat-messages');
     const sendButton = document.getElementById('send-button');
     const connectionStatus = document.getElementById('connection-status');
+    const loadingMessage = document.getElementById('loading-message');
+    
+    // Keep track of displayed date dividers
+    let currentDateString = '';
     
     // Connect to WebSocket with JWT token
     function connectWebSocket() {
@@ -76,6 +80,9 @@
                 message: "You are now connected to the chat!",
                 timestamp: new Date().toISOString()
             }, true);
+            
+            // Request chat history
+            requestChatHistory();
         };
         
         socket.onmessage = function(event) {
@@ -86,6 +93,9 @@
             if (data.status === "sent") {
                 // This is an acknowledgment of our sent message
                 console.log("Message acknowledged by server:", data.message_id);
+            } else if (data.messages) {
+                // This is the chat history
+                displayChatHistory(data.messages);
             } else {
                 // This is a regular message
                 addMessage(data);
@@ -118,14 +128,114 @@
         };
     }
     
+    // Request chat history
+    function requestChatHistory() {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            // Loading message
+            loadingMessage.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading chat history...</span></div><p>Loading chat history...</p>';
+            
+            const channelRequest = {
+                operation: 4,  // get channel history
+                channel_id: channelId
+            };
+            
+            const request = {
+                type: 1,  // channel type request
+                data: JSON.stringify(channelRequest)
+            };
+            
+            console.log("Requesting chat history for channel:", channelId);
+            socket.send(JSON.stringify(request));
+        }
+    }
+    
+    // Display chat history
+    function displayChatHistory(messages) {
+        // Clear loading message
+        loadingMessage.remove();
+        
+        if (!messages || messages.length === 0) {
+            // No messages in history
+            addMessage({
+                username: "System",
+                message: "No previous messages in this channel.",
+                timestamp: new Date().toISOString()
+            }, true);
+            return;
+        }
+        
+        // Sort messages by timestamp (oldest first)
+        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Reset current date string before processing history
+        currentDateString = '';
+        
+        // Add each message to the chat
+        messages.forEach(message => {
+            addMessage(message);
+        });
+        
+        // Add a divider to separate history from new messages
+        const divider = document.createElement('div');
+        divider.className = 'chat-message system-message';
+        divider.innerHTML = '<div class="text-center"><hr><span class="badge bg-secondary">New Messages</span><hr></div>';
+        messagesContainer.appendChild(divider);
+    }
+    
     // Format timestamp for display
-    function formatTimestamp(timestamp) {
+    function formatTimestamp(timestamp, showDateOnly = false) {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (showDateOnly) {
+            // Return only the date part for headers
+            if (date.toDateString() === today.toDateString()) {
+                return 'Today';
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                return 'Yesterday';
+            } else {
+                return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            }
+        } else {
+            // Return only time for messages
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+    
+    // Check if we need to add a date header
+    function checkAndAddDateHeader(timestamp) {
+        const date = new Date(timestamp);
+        const dateString = date.toDateString();
+        
+        if (dateString !== currentDateString) {
+            // This is a message from a new day, add a header
+            currentDateString = dateString;
+            
+            const dateHeader = document.createElement('div');
+            dateHeader.className = 'date-header';
+            dateHeader.innerHTML = `
+                <div class="text-center">
+                    <div class="date-divider">
+                        <span class="date-badge">${formatTimestamp(timestamp, true)}</span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(dateHeader);
+            return true;
+        }
+        
+        return false;
     }
     
     // Add a message to the chat
     function addMessage(data, isSystem = false) {
+        // Check if we need to add a date header before this message
+        if (!isSystem) {
+            checkAndAddDateHeader(data.timestamp);
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = isSystem ? 'chat-message system-message' : 'chat-message';
         
@@ -251,6 +361,30 @@
     
     .message-self .message-header {
         flex-direction: row-reverse;
+    }
+    
+    .date-header {
+        width: 100%;
+        margin: 20px 0 10px 0;
+        text-align: center;
+    }
+    
+    .date-divider {
+        position: relative;
+        height: 1px;
+        background-color: #ddd;
+        margin: 15px 0;
+    }
+    
+    .date-badge {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: white;
+        padding: 0 10px;
+        font-weight: bold;
+        color: #6c757d;
     }
 </style>
 {% endblock %}

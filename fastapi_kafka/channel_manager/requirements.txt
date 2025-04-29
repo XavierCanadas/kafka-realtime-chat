@@ -6,3 +6,4 @@ pyjwt[crypto]
 passlib[bcrypt]
 redis
 psycopg2-binary
+pymongo

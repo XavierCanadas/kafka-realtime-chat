@@ -4,12 +4,15 @@
 #
 #  Created by Xavier Cañadas on 21/4/2025
 #  Copyright (c) 2025. All rights reserved.
-from fastapi import FastAPI, Query, status, HTTPException
+from fastapi import FastAPI, status, HTTPException
 from contextlib import asynccontextmanager
-from sqlmodel import inspect, select
 
-from .database import SessionDep, engine, get_channels_from_user, get_channels_by_name, create_channel, join_channel
-from .models import Channel, UserChannels, CreateChannelRequest, JoinChannelRequest
+from sqlmodel import inspect
+
+from .database import SessionDep, engine, get_channels_from_user, get_channels_by_name, create_channel, join_channel, \
+    get_channel_messages_history
+from .models import CreateChannelRequest, JoinChannelRequest, MessageCollection
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -92,3 +95,12 @@ def join_channel_endpoint(join_channel_req: JoinChannelRequest, session: Session
 
 
 
+@app.get("/channels/messages/{channel_id}")
+def get_channel_messages(channel_id: int):
+    """
+    This endpoint returns the messages history of the given channel_id.
+    """
+    try:
+        return get_channel_messages_history(channel_id)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

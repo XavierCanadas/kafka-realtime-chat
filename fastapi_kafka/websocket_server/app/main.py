@@ -24,7 +24,7 @@ from confluent_kafka import Producer, Consumer, KafkaError
 import redis
 
 from .jwt_auth import oauth2_scheme, get_username_from_token
-from .models import ChannelRequest, Message, MessageRequest, Request
+from .models import Message, MessageRequest, Request
 from .channel_requests import send_channel_request
 
 SERVER_URL = os.getenv("SERVER_URL", "websocket_server_1:80")

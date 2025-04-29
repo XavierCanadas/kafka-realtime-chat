@@ -5,20 +5,21 @@
 #  Created by Xavier Cañadas on 15/4/2025
 #  Copyright (c) 2025. All rights reserved.
 from typing import Any, Sequence
-
-from pydantic import BaseModel
-from confluent_kafka import Consumer, KafkaException
-from sqlmodel import Field, Session, SQLModel, create_engine, select
-from sqlalchemy import Select
-
 import logging
 import json
 import os
-import requests
-import aiohttp
-from sqlmodel.sql._expression_select_cls import _T
-import redis
 import asyncio
+import aiohttp
+
+from confluent_kafka import Consumer, KafkaException
+from sqlmodel import Session, create_engine, select
+from sqlmodel.sql._expression_select_cls import _T
+from sqlalchemy import Select
+from pymongo import MongoClient
+import redis
+
+
+from .models import Message, MessageRequest, UserChannels
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
@@ -44,43 +45,11 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL, echo=True)
 
-"""
-CREATE TABLE IF NOT EXISTS user_channels
-(
-    username   VARCHAR(50) NOT NULL,
-    channel_id INTEGER     NOT NULL,
-    PRIMARY KEY (username, channel_id),
-    FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE,
-    FOREIGN KEY (channel_id) REFERENCES channels (id) ON DELETE CASCADE
-);
-"""
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://root:password@mongodb:27017/")
+client = MongoClient(MONGO_URL)
+db = client.chatdb
+messages_collection = db.messages
 
-class UserChannels(SQLModel, table=True):
-    __tablename__ = "user_channels"
-    __table_args__ = {"schema": "public"}
-
-    username: str = Field(primary_key=True, foreign_key='users.username')
-    channel_id: int = Field(primary_key=True, foreign_key='channels.channel_id')
-
-
-class Message(BaseModel):
-    """
-    This class defines the message sent by the client.
-    """
-    message_id: str
-    channel_id: int
-    timestamp: str
-    username: str
-    message: str
-
-
-class MessageRequest(BaseModel):
-    """
-    This class defines a message request.
-    This allows putting more info in the post if it's necessary in the future.
-    """
-    message: Message
-    username: str | None
 
 
 message_consumer = Consumer(MESSAGE_CONSUMER_CONFIG)
@@ -170,11 +139,14 @@ async def send_message(message: Message, username: str, websocket_server_url: st
 async def store_message(message: Message):
     """
     This function stores the given message in the non relational database.
-    todo: now the function doesn't do anything, in the future make it functional.
     """
-    logger.info(
-        f"message stored in the database: {message.message_id}: {message.message}"
-    )
+    try:
+        message_data = message.model_dump(by_alias=True, exclude={"message_id"})
+        result = messages_collection.insert_one(message_data)
+        logger.info(f"Message stored in MongoDB with _id: {result.inserted_id}")
+    except Exception as e:
+        logger.error(f"Failed to store message: {e}")
+
 
 
 async def process_message(message: Message):
@@ -193,6 +165,8 @@ async def process_message(message: Message):
 
     # Send message to ALL users in the channel, not just the sender
     for username in usernames:
+        if message.username == username:
+            continue
         try:
             websocket_server = get_user_websocket_server(username)
             logger.info(f"Sending message to user: {username}")
