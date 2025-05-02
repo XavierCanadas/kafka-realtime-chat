@@ -1,125 +1,166 @@
-# Realtime chat with kafka
-*Created by Xavier Cañadas*
+# Realtime Chat built with Kafka
 
+## A scalable, microservices-based chat platform powered by Apache Kafka
 
+A modern, event-driven chat application that demonstrates microservices architecture and real-time communication using Apache Kafka, FastAPI, WebSockets, and multiple databases (PostgreSQL, MongoDB, Redis). The platform supports multiple clients including a web interface and a SwiftUI app.
 
-## 1. Introduction
-This project is a simplified version of a realtime chat application built using a microservice architecture, where each component focuses on a specific task. The system offers several key features and architectural benefits:
+<details>
+<summary>Table of Contents</summary>
 
-- **Distributed System**: The application is designed as a collection of loosely coupled services that work together, improving fault tolerance and enabling independent development and deployment of components.
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+  - [Communication Patterns](#communication-patterns)
+- [Technology Stack](#technology-stack)
+- [Installation](#installation)
+- [Project Structure](#project-structure)
+- [Development Progress](#development-progress)
+- [Future Enhancements](#future-enhancements)
+- [Learning Resources](#learning-resources)
+- [Feedback](#feedback)
+- [Project Background](#project-background)
 
-- **Horizontal Scalability**: Each microservice can be independently scaled out to handle increasing loads. This architecture allows the system to efficiently accommodate growing numbers of users and messages by adding more instances of specific components as needed.
+</details>
 
-- **Kafka Integration**: Apache Kafka serves as the central message broker, enabling high-throughput, fault-tolerant communication between services. This ensures reliable message delivery even under high load or when components fail.
+![Realtime Chat Architecture](resources/architecture_design.png)
 
-- **Technology Stack**:
+## Key Features
 
-    - **Client**: A native iOS mobile application built with SwiftUI
-    - **Backend Services**: Multiple microservices implemented with Python FastAPI
-    - **Message Broker**: Confluent Kafka for real-time event streaming
-    - **Data Storage**: SQL database for user information and authentication, NoSQL database for efficient message storage and retrieval
-    - **Local Deployment**: The entire system can be deployed locally using Docker containers, making development and testing straightforward while maintaining isolation between services.
+- **Real-time messaging** via WebSockets with efficient message delivery
+- **Scalable microservices architecture** with load balancing
+- **Event-driven communication** using Apache Kafka for message distribution
+- **RESTful API services** for authentication and inter-service communication
+- **Multiple database solutions**:
+  - PostgreSQL for user and channel data
+  - MongoDB for message storage and history
+  - Redis for real-time connection tracking
+- **JWT-based authentication** with RSA key encryption
+- **Multi-client support** (Web and iOS/SwiftUI)
+- **Channel management** (create, join, search)
+- **Message history** with proper timestamps and date formatting
 
-This architecture allows for a responsive, reliable chat experience that can scale from a small prototype to a production system capable of handling numerous concurrent users and conversations.
+## Architecture
 
-## 2. Data Structure
+The project is built using a microservices architecture with the following components:
 
-## 3. System architecture
-![Diagram of the architecture](<resources/Realtime chat architecture design.png>)
+- **Login Server**: Handles user authentication and JWT token generation via REST API
+- **WebSocket Server**: Manages real-time client connections with load balancing
+- **Message Consumer**: Processes messages from Kafka and routes them to appropriate recipients
+- **Channel Manager**: Handles channel operations (create, join, search, history) through REST endpoints
+- **Web Client**: Browser-based client interface
+- **SwiftUI Client**: Native iOS client (in development)
+- **Nginx**: Load balancer for WebSocket connections
 
-### 3.1 Client
-The client is a mobile app built with SwiftUI. Users first need to log in to access the system. Once authenticated, they can initiate private conversations with other users or join existing group chats.
+### Communication Patterns
 
-The app establishes a persistent WebSocket connection with the websocker servers, enabling real-time bidirectional communication. This allows messages to be sent and received instantly without polling the server.
+The system uses multiple communication patterns:
+- **REST APIs** for:
+  - User authentication and registration
+  - Channel management (create, join, search)
+  - Service-to-service communication
+  - Message history retrieval
+- **WebSockets** for:
+  - Real-time bidirectional communication with clients
+  - Live message delivery
+- **Kafka** for:
+  - Asynchronous message processing
+  - Message distribution to multiple consumers
 
-All messages are stored on the server side. When a user opens a conversation, the app automatically requests and loads the message history from the server, ensuring users have access to the complete chat history regardless of which device they're using.
+## Technology Stack
 
-The users can create a channel and also join one that already exists. Inside the channel, the users can send and receive new messages and see the history.
+- **Backend**: FastAPI (Python)
+- **APIs**: RESTful endpoints with JSON
+- **Message Broker**: Apache Kafka
+- **Databases**:
+  - PostgreSQL (relational data)
+  - MongoDB (message storage)
+  - Redis (connection state)
+- **Frontend**: HTML/CSS/JavaScript, Bootstrap
+- **Mobile**: SwiftUI (iOS)
+- **Containerization**: Docker & Docker Compose
 
+## Installation
 
-### 3.2 WebSocket Server
+### 1. Start Kafka Infrastructure
 
-The WebSocket Server acts as the real-time communication backbone of the system, managing bidirectional connections with client applications. Each server instance maintains numerous concurrent WebSocket connections with clients, enabling instant message delivery.
+```bash
+cd fastapi_kafka
+docker-compose -f compose.kafka.yaml up -d
+```
 
-**Key characteristics**:
+### 2. Create Kafka Topic
 
-- **Horizontal Scalability**: The server is designed to scale horizontally to handle thousands of simultaneous connections. Additional server instances can be dynamically added to accommodate growing user loads.
-
-- **Stateless Architecture**: To ensure reliability and fault tolerance, these servers are stateless. If one instance fails, connections can be re-established through other instances with minimal disruption.
-
-- **Connection Management**: When a client establishes a WebSocket connection, the server registers this connection in Redis, creating a mapping between user IDs and server instances. This allows the system to route messages to the correct server instance.
-
-- **Message Delivery**: 
-    - **Send messages**: When a user sends a message in a channel, the WebSocket server receives it and produces the message to the message Kafka topic for further processing.
-    - **Received messages**: The server provides an endpoint that receives messages intended for active clients. When message servers send data to this endpoint, the server forwards these messages to the appropriate clients through their active websocket connections.
-
-
-### 3.3 Load Balancer
-
-The Load Balancer serves as the single entry point for all client connections to the backend system. It plays a critical role in ensuring the system's reliability, scalability, and performance.
-
-The Load Balancer dynamically routes incoming WebSocket connection requests from clients across multiple WebSocket Server instances.
-
-### 3.4 Message Server
-
-The Message Server is responsible for processing messages sent by clients. It acts as a Kafka consumer, retrieving messages from the appropriate topics for further handling.
-
-**Key characteristics**:
-
-- **Horizontal Scalability**: The server can be scaled horizontally with multiple instances organized as a consumer group to handle increasing message loads.
-
-- **Message Processing Flow**:
-    1. When consuming a message, it first identifies which channel the message belongs to.
-    2. It then determines which users are members of that channel
-    3. It queries Redis to locate the WebSocket server instances where these users are currently connected
-    4. Once it has the list of active users and their connection points, it forwards the message to the corresponding WebSocket servers.
-
-- **Persistent Storage**: In parallel with message delivery, it asynchronously stores each message in the message database, ensuring chat history is preserved for future reference.
-
-- **Fault Tolerance**: As part of a Kafka consumer group, if one server instance fails, others can take over its workload with minimal disruption.
-
-### 3.5 Kafka
-
-Apache Kafka serves as the messaging backbone of the system, enabling reliable, high-throughput message delivery between components.
-
-**Key characteristics**:
-
-- **Topic Organization**: All messages from all channels are sent to a single topic called "Messages". This topic is configured with multiple partitions to enable parallel processing.
-
-- **Message Structure**:
-
-    - **Key**: Each message uses the channel ID as its key, ensuring that messages for the same channel are routed to the same partition
-    - **Value**: The message payload contains the actual message content along with additional metadata (user ID, timestamp, etc.)
-- **Ordering Guarantee**: By using the channel ID as the partition key, we ensure that all messages for a specific channel are processed in the exact order they were sent, maintaining conversation coherence
-
-- **Scalability**: The partitioned design allows multiple consumer instances to process messages in parallel while preserving order within each channel
-
-- topics:
-```c 
+```bash
 docker exec -it kafka-cluster-kafka-1-1 /bin/sh
 
-/bin/kafka-topics --bootstrap-server kafka-1:9092 --create --topic messages  --partitions 20 --replication-factor 
+/bin/kafka-topics --bootstrap-server kafka-1:9092 --create --topic messages  --partitions 20 --replication-factor 1
 
 /bin/kafka-topics --bootstrap-server kafka-1:9092 --list
 ```
 
+### 3. Start the Chat Application Services
+
+```bash
+docker-compose up -d
+```
+
+### 4. Access the Web Client
+
+Open your browser and navigate to: `http://localhost:5004`
+
+## Project Structure
+
+```
+fastapi_kafka/
+├── login_server/          # Authentication service
+├── websocket_server/      # WebSocket communication service
+├── message_consumer/      # Kafka consumer service
+├── channel_manager/       # Channel management service
+├── web_client/            # Web client interface
+├── databases/             # Database initialization scripts
+│   ├── mongodb/
+│   └── relational_database/
+├── nginx/                 # Load balancer configuration
+└── auxiliar/              # Utility scripts and keys
+
+RealtimeChat/              # iOS SwiftUI client
+```
+
+## Development Progress
+
+- ✅ Backend microservices architecture
+- ✅ Kafka message distribution
+- ✅ Web client implementation
+- ✅ Channel management and message history
+- 🔄 iOS SwiftUI client (in progress)
+- 🔄 Additional features and optimizations
+
+## Future Enhancements
+
+- Direct messaging between users
+- Message read receipts and typing indicators
+- Push notifications
+
+## Learning Resources
+
+This project demonstrates several important concepts in software development:
+
+- Microservice architecture design and implementation
+- Event-driven systems with Kafka
+- Real-time communication with WebSockets
+- RESTful API design and implementation
+- Database selection for different use cases
+- JWT-based authentication based in RSA encryption
+- Load balancing and horizontal scaling
 
 
+## Feedback
 
+Your **feedback** and **suggestions** on this project are highly **appreciated**! If you have ideas for improvements or encounter any bug, **open a new issue** in the GitHub repository with the specific tag
 
-## 4. Implementation
+## Project background
 
+This project was created as a personal project after completing the large-scale distributed systems course of my computer science degree in Universitat Pompeu Fabra.
 
-## References
-- Romaniuk, M. (February 26, 2024). System design: Chat Application - Mariia romaniuk - medium. Medium. https://medium.com/@m.romaniiuk/system-design-chat-application-1d6fbf21b372
+I wanted to deep in my learning of this topics and gain more experience on building this type of systems.
 
-- GeeksforGeeks. (June 2024). How Discord Scaled to 15 Million Users on One Server? GeeksforGeeks. https://www.geeksforgeeks.org/how-discord-scaled-to-15-million-users-on-one-server/
-
-- Vishnevskiy, S. (July 6, 2017). How Discord Scaled Elixir to 5,000,000 Concurrent Users. Discord Blog. https://discord.com/blog/how-discord-scaled-elixir-to-5-000-000-concurrent-users
-
-- Stanislav Vishnevskiy. (January 13, 2017). How Discord Stores Billions of Messages. Discord Blog. https://discord.com/blog/how-discord-stores-billions-of-messages
-
-- Thangudu, S. (2023, April 11). Real-time messaging. Engineering at Slack. https://slack.engineering/real-time-messaging/
-
-- GeeksforGeeks. (March 18, 2024). Designing WhatsApp Messenger | System Design. GeeksforGeeks. https://www.geeksforgeeks.org/designing-whatsapp-messenger-system-design/?ref=ml_lbp
-
+Thank you for taking the time to review this project!
