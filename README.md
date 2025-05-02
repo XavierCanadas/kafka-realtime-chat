@@ -42,7 +42,7 @@ A modern, event-driven chat application that demonstrates microservices architec
 
 The project is built using a microservices architecture with the following components:
 
-- **Login Server**: Handles user authentication and JWT token generation via REST API
+- **Login Server**: Handles user authentication with OAuth2 and JWT token generation
 - **WebSocket Server**: Manages real-time client connections with load balancing
 - **Message Consumer**: Processes messages from Kafka and routes them to appropriate recipients
 - **Channel Manager**: Handles channel operations (create, join, search, history) through REST endpoints
@@ -127,13 +127,15 @@ RealtimeChat/              # iOS SwiftUI client
 ```
 
 ## Development Progress
-
-- ✅ Backend microservices architecture
-- ✅ Kafka message distribution
-- ✅ Web client implementation
-- ✅ Channel management and message history
-- 🔄 iOS SwiftUI client (in progress)
-- 🔄 Additional features and optimizations
+- [x] Log in with OAuth2 and JWT Token
+- [x] WebSocket servers: open and managing websocket connections
+- [x] Kafka message distribution
+- [x] Messages consumers: process the messages
+- [x] Web client implementation
+- [x] Channel management: create, join and search channels 
+- [x] Message history: save and request messages from mongoDB
+- [ ] iOS SwiftUI client (in progress)
+- [ ] Additional features and optimizations
 
 ## Future Enhancements
 
