@@ -61,6 +61,7 @@ The system uses multiple communication patterns:
 - **WebSockets** for:
   - Real-time bidirectional communication with clients
   - Live message delivery
+  - All client requests, except initial login, are sent through the websocket to avoid opening a new connection every time. The WebSocket server internally routes these requests to appropriate services via async HTTP calls
 - **Kafka** for:
   - Asynchronous message processing
   - Message distribution to multiple consumers
