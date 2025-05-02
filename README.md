@@ -81,10 +81,6 @@ The system uses multiple communication patterns:
 
 ## Installation
 
-### Prerequisites
-
-- [Docker](https://www.docker.com/get-started) and Docker Compose installed on your system
-
 ### 1. Start Kafka Infrastructure
 
 ```bash
