@@ -61,7 +61,7 @@ ON CONFLICT (username) DO NOTHING;
 
 -- Add a channel to the table
 INSERT INTO channels (channel_name, description)
-VALUES ('Swifties', 'The best fan base')
+VALUES ('The Tortured Poets Department', 'The channel for all the tortured poets')
 ON CONFLICT (channel_name) DO NOTHING;
 
 -- Add users to a channel
