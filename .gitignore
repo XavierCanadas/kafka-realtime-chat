@@ -1,3 +1,4 @@
 # MacOS files
 .DS_Store
 readme_vell.md
+/fastapi_kafka/databases/relational_database/proves.sql
