@@ -50,6 +50,41 @@ The project is built using a microservices architecture with the following compo
 - **SwiftUI Client**: Native iOS client (in development)
 - **Nginx**: Load balancer for WebSocket connections
 
+### Message Flow Sequence
+
+When a client sends a message to a channel, the following sequence of events occurs:
+
+1. **Client sends a message**: 
+    - The client sends a message via the opened WebSocket connection in json format.
+
+2. **WebSocket server receives it and process it**:
+    - The WebSocket server receives the message.
+    - Decodes it and process the message to the Kafka "messages" topic.  
+    - The message in kafka has the id of the channel as a key and the content with additional information as the body.
+    - Finally, sends an acknowledges receipt to the client.
+
+3. **Kafka distribution**:
+    - Kafka stores the message in the "messages" topic.
+    - This topic has multiple partitions and ensures every message from a channel ends in the same partition.
+    - Makes the topic visible to all subscribed consumers instances, allowing horizontal scaling.
+
+4. **Message consumer processing**: 
+    - A message consumer instance pulls the message from kafka and process it.
+    - First querys all the integrants of the channel where the message belongs.
+    - Next, requests Redis all the active users from that channel and in wich websocket server are connected.
+    - Then, sends the message to all the websocket servers.
+    - Finally, inserts the message into the MongoDB database.
+
+5. **Websocket server delivers message**: 
+    - The websocket server receives the message send by the message consumer.
+    - Checks in which websocket connection is the client, and delivers the message.
+
+6. **Client Display**:
+   - Client applications receive the message via their WebSocket connection
+   - Process and display the message in the UI with appropriate formatting
+
+This architecture enables high scalability by distributing message processing across multiple services while maintaining real-time delivery through persistent WebSocket connections.
+
 ### Communication Patterns
 
 The system uses multiple communication patterns:
