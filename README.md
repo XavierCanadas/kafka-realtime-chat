@@ -9,6 +9,7 @@ A modern, event-driven chat application that demonstrates microservices architec
 
 - [Key Features](#key-features)
 - [Architecture](#architecture)
+  - [Message Flow Sequence](#message-flow-sequence)
   - [Communication Patterns](#communication-patterns)
 - [Technology Stack](#technology-stack)
 - [Installation](#installation)
